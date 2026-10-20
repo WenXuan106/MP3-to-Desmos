@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MP3/WAV to Desmos Converter</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f7f9;--card:#fff;--fg:#1c2026;--mut:#5d6672;--bd:#d9dde3;--ac:#2d70b3;--acfg:#fff;--ok:#2c8543}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171b;--card:#1d2127;--fg:#e8ebef;--mut:#9aa4b0;--bd:#30363e;--ac:#5b9bd8;--acfg:#0d1117;--ok:#58b873}}
+:root[data-theme="dark"]{--bg:#14171b;--card:#1d2127;--fg:#e8ebef;--mut:#9aa4b0;--bd:#30363e;--ac:#5b9bd8;--acfg:#0d1117;--ok:#58b873}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:1.5rem;margin:0 0 4px}
+p.sub{color:var(--mut);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:16px}
+#drop{border:2px dashed var(--bd);border-radius:12px;padding:28px 12px;text-align:center;cursor:pointer;color:var(--mut)}
+#drop.on{border-color:var(--ac);color:var(--fg)}
+#drop b{color:var(--fg)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
+label{display:block;font-size:.8rem;color:var(--mut)}
+select,input[type=number]{width:100%;margin-top:4px;padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--fg);font:inherit}
+small{display:block;margin-top:2px;color:var(--mut);font-size:.72rem}
+button{font:inherit;padding:10px 18px;border-radius:8px;border:0;background:var(--ac);color:var(--acfg);cursor:pointer;font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+button.sec{background:transparent;color:var(--fg);border:1px solid var(--bd)}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+progress{width:100%;height:10px;margin-top:12px}
+#status{margin-top:8px;color:var(--mut);font-size:.9rem;min-height:1.3em}
+.stats{display:flex;gap:18px;flex-wrap:wrap;font-size:.9rem;margin-bottom:6px}
+.stats span b{display:block;font-size:1.1rem}
+.warn{color:#c0392b}
+ol{padding-left:20px;margin:8px 0 0}
+textarea{width:100%;height:90px;margin-top:10px;font:12px monospace;background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:8px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>MP3/WAV to Desmos Converter</h1>
+<p class="sub">Turns an audio file into a Desmos graph that plays it back with sine tones. Everything runs in your browser; nothing is uploaded.</p>
+
+<div class="card">
+  <div id="drop"><b id="fname">Drop an MP3 or WAV here</b><br>or tap to choose a file</div>
+  <input id="file" type="file" accept="audio/*,.mp3,.wav" class="hide">
+  <div class="grid">
+    <label>Sample rate (Hz)<select id="sr"><option>8000</option><option>9000</option><option>10000</option><option selected>12000</option><option>16000</option><option>22050</option></select><small>Lower = smaller graph</small></label>
+    <label>Partials per frame<input id="np" type="number" min="1" max="60" value="30"><small>More = more detail, more noise</small></label>
+    <label>Gain digits<input id="gd" type="number" min="1" max="5" value="3"><small>More = precise, bigger graph</small></label>
+    <label>Gain scaling power<input id="gp" type="number" min="0.1" max="2" step="0.1" value="1.0"><small>0.5 is sqrt; 0.7-1.0 is clearer</small></label>
+  </div>
+  <div class="row"><button id="go" disabled>Convert</button></div>
+  <progress id="bar" value="0" max="1" class="hide"></progress>
+  <div id="status"></div>
+</div>
+
+<div class="card hide" id="out">
+  <div class="stats">
+    <span>Frames<b id="s-fr">-</b></span><span>Duration<b id="s-du">-</b></span><span>Graph size<b id="s-sz">-</b></span>
+  </div>
+  <div id="szwarn" class="warn hide">Over Desmos’s ~5 MB graph limit. Try a lower sample rate, fewer partials, fewer gain digits, or a shorter clip.</div>
+  <div class="row"><button id="copy">Copy graph command</button><button id="toggle" class="sec">Show text box</button></div>
+  <textarea id="ta" class="hide" readonly></textarea>
+  <ol>
+    <li>Open a new graph at desmos.com/calculator</li>
+    <li>Open developer tools (F12) and go to the Console tab</li>
+    <li>Paste the command and press Enter</li>
+    <li>Close developer tools. Playback starts automatically; use the play/pause button on the graph.</li>
+  </ol>
+</div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let audioFile = null, command = "";
+const MAX_LIST = 9999, HOP = 256, NFFT = 1024, PEAK_RATIO = 0.01, PEAK_HZ = 24;
+
+// ---------- file input ----------
+const drop = $("drop"), fileIn = $("file");
+drop.onclick = () => fileIn.click();
+fileIn.onchange = () => setFile(fileIn.files[0]);
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("on"); };
+drop.ondragleave = () => drop.classList.remove("on");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("on"); setFile(e.dataTransfer.files[0]); };
+function setFile(f) {
+  if (!f) return;
+  audioFile = f; $("fname").textContent = f.name; $("go").disabled = false;
+}
+
+// ---------- FFT ----------
+function makeFFT(n) {
+  const levels = Math.log2(n), rev = new Uint32Array(n), cos = new Float64Array(n / 2), sin = new Float64Array(n / 2);
+  for (let i = 0; i < n; i++) { let r = 0; for (let b = 0; b < levels; b++) r |= ((i >> b) & 1) << (levels - 1 - b); rev[i] = r; }
+  for (let i = 0; i < n / 2; i++) { cos[i] = Math.cos(2 * Math.PI * i / n); sin[i] = Math.sin(2 * Math.PI * i / n); }
+  return (re, im) => {
+    for (let i = 0; i < n; i++) { const j = rev[i]; if (j > i) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    for (let size = 2; size <= n; size *= 2) {
+      const half = size / 2, step = n / size;
+      for (let i = 0; i < n; i += size) for (let j = i, k = 0; j < i + half; j++, k += step) {
+        const l = j + half, tr = re[l] * cos[k] + im[l] * sin[k], ti = -re[l] * sin[k] + im[l] * cos[k];
+        re[l] = re[j] - tr; im[l] = im[j] - ti; re[j] += tr; im[j] += ti;
+      }
+    }
+  };
+}
+
+// ---------- peak finding (scipy.signal.find_peaks height + distance) ----------
+function findPeaks(d, minH, minDist) {
+  const peaks = [];
+  for (let i = 1; i < d.length - 1; i++) {
+    if (d[i - 1] < d[i]) {
+      let a = i + 1;
+      while (a < d.length - 1 && d[a] === d[i]) a++;
+      if (d[a] < d[i]) { peaks.push((i + a - 1) >> 1); i = a; }
+    }
+  }
+  const hp = peaks.filter(p => d[p] >= minH);
+  if (minDist <= 1) return hp;
+  const keep = new Uint8Array(hp.length).fill(1);
+  const order = hp.map((_, i) => i).sort((x, y) => d[hp[x]] - d[hp[y]]);
+  for (let o = order.length - 1; o >= 0; o--) {
+    const i = order[o]; if (!keep[i]) continue;
+    for (let k = i - 1; k >= 0 && hp[i] - hp[k] < minDist; k--) keep[k] = 0;
+    for (let k = i + 1; k < hp.length && hp[k] - hp[i] < minDist; k++) keep[k] = 0;
+  }
+  return hp.filter((_, i) => keep[i]);
+}
+
+// ---------- audio analysis ----------
+const tick = () => new Promise(r => setTimeout(r));
+async function decode(file, sr) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: sr });
+  const buf = await ctx.decodeAudioData(await file.arrayBuffer());
+  const n = buf.length, y = new Float32Array(n), ch = buf.numberOfChannels;
+  for (let c = 0; c < ch; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) y[i] += d[i] / ch; }
+  ctx.close(); return y;
+}
+async function analyze(y, sr, N, power, onProg) {
+  const half = NFFT / 2, frames = 1 + Math.floor(y.length / HOP), bins = half + 1;
+  const pad = new Float32Array(y.length + NFFT);
+  pad.set(y, half);
+  for (let i = 1; i <= half; i++) { pad[half - i] = y[Math.min(i, y.length - 1)]; pad[half + y.length - 1 + i] = y[Math.max(y.length - 1 - i, 0)]; }
+  const win = new Float64Array(NFFT).map((_, k) => 0.5 - 0.5 * Math.cos(2 * Math.PI * k / NFFT));
+  const fft = makeFFT(NFFT), re = new Float64Array(NFFT), im = new Float64Array(NFFT), mag = new Float32Array(bins);
+  const freqs = new Float32Array(frames * N), gains = new Float32Array(frames * N);
+  const minDist = Math.max(1, Math.floor(PEAK_HZ * NFFT / sr));
+  let maxGain = 0;
+  for (let f = 0; f < frames; f++) {
+    const s = f * HOP; let mx = 0;
+    for (let k = 0; k < NFFT; k++) { re[k] = (pad[s + k] || 0) * win[k]; im[k] = 0; }
+    fft(re, im);
+    for (let k = 0; k < bins; k++) { mag[k] = Math.hypot(re[k], im[k]); if (mag[k] > mx) mx = mag[k]; }
+    const idx = findPeaks(mag, mx > 0 ? mx * PEAK_RATIO : 0, minDist).sort((a, b) => mag[b] - mag[a]).slice(0, N);
+    for (let p = 0; p < idx.length; p++) {
+      freqs[f * N + p] = idx[p] * sr / NFFT; gains[f * N + p] = mag[idx[p]];
+      if (mag[idx[p]] > maxGain) maxGain = mag[idx[p]];
+    }
+    if (f % 300 === 0) { onProg(f / frames); await tick(); }
+  }
+  for (let i = 0; i < gains.length; i++) gains[i] = maxGain > 1e-6 ? Math.pow(gains[i] / maxGain, power) : 0;
+  return { freqs, gains, frames };
+}
+
+// ---------- Desmos state ----------
+function buildCommand(freqs, gains, frames, N, digits, sr, title) {
+  const C = Math.ceil(frames / MAX_LIST), sfx = k => k === 1 ? "" : "_" + k;
+  const scale = "0." + "0".repeat(digits - 1) + "1", top = 10 ** digits;
+  const gs = g => { const s = g * top; if (s < 0.5) return "0"; const r = Math.round(s); return String(r >= top ? top : r); };
+  const ex = [], bounds = k => [(k - 1) * MAX_LIST, k === C ? frames : k * MAX_LIST];
+  const cond = k => { const [lb, ub] = bounds(k); return C === 1 ? "\\left\\{d_{i}=1\\right\\}" : k === 1 ? `\\left\\{1 \\le I \\le ${ub}, d_{i}=1\\right\\}` : `\\left\\{${lb} < I \\le ${ub}, d_{i}=1\\right\\}`; };
+  let id = 3;
+  ex.push({ type: "folder", id: "2", title: "Frequencies and Amplitudes (do not open)", collapsed: true });
+  for (let k = 1; k <= C; k++) {
+    const [lb, ub] = bounds(k), fl = [], gl = [];
+    for (let p = 0; p < N; p++) {
+      const fa = [], ga = [];
+      for (let f = lb; f < ub; f++) { fa.push(Math.round(freqs[f * N + p])); ga.push(gs(gains[f * N + p])); }
+      fl.push("[" + fa.join(",") + "][i]"); gl.push("[" + ga.join(",") + "][i]");
+    }
+    ex.push({ type: "expression", id: String(id++), folderId: "2", color: "#2d70b3", latex: `F${sfx(k)}(i) = [${fl.join(",")}]`, hidden: true });
+    ex.push({ type: "expression", id: String(id++), folderId: "2", color: "#388c46", latex: `G${sfx(k)}(i) = [${gl.join(",")}]`, hidden: true });
+  }
+  for (let k = 1; k <= C; k++) {
+    const [lb] = bounds(k), s = sfx(k);
+    ex.push({ type: "expression", id: String(id++), color: "#6042a6", latex: `\\operatorname{tone}\\left(F${s}(I-${lb}),${scale}G${s}(I-${lb})\\right)${cond(k)}` });
+  }
+  const vf = String(id++), cf = String(id++), df = String(id++);
+  ex.push({ type: "folder", id: vf, title: "Variables", collapsed: true });
+  ex.push({ type: "expression", id: String(id++), folderId: vf, color: "#000000", latex: "I=1", hidden: true, slider: { hardMin: true, hardMax: true, min: "1", max: String(frames) } });
+  ex.push({ type: "expression", id: String(id++), folderId: vf, color: "#388c46", latex: "d_{i}=1", hidden: true });
+  ex.push({ type: "folder", id: cf, title: "Colors", collapsed: true });
+  ex.push({ type: "expression", id: String(id++), folderId: cf, color: "#6042a6", latex: "C_{middle}=\\left\\{d_{i}=1:\\operatorname{rgb}\\left(44,133,67\\right),\\operatorname{rgb}\\left(176,58,58\\right)\\right\\}" });
+  ex.push({ type: "expression", id: String(id++), folderId: cf, color: "#000000", latex: "C_{bar}=\\operatorname{rgb}\\left(90,90,90\\right)" });
+  ex.push({ type: "folder", id: df, title: "Display", collapsed: true });
+  const D = { folderId: df, color: "#000000" };
+  ex.push({ type: "expression", id: String(id++), folderId: df, color: "#c74440", latex: "\\left(x-1500\\right)^{2}+\\left(y+920\\right)^{2}\\le300^{2}", colorLatex: "C_{middle}", clickableInfo: { enabled: true, latex: `\\left\\{I=${frames}:I\\to 1\\right\\},d_{i}\\to1-d_{i}` } });
+  ex.push({ type: "expression", id: String(id++), ...D, latex: "\\operatorname{polygon}\\left(\\left(1430,-1040\\right),\\left(1430,-800\\right)\\right)\\left\\{d_{i}=1\\right\\}", fill: false, lineWidth: "5" });
+  ex.push({ type: "expression", id: String(id++), ...D, latex: "\\operatorname{polygon}\\left(\\left(1570,-1040\\right),\\left(1570,-800\\right)\\right)\\left\\{d_{i}=1\\right\\}", fill: false, lineWidth: "5" });
+  ex.push({ type: "expression", id: String(id++), ...D, latex: "\\operatorname{polygon}\\left(\\left(1410,-1040\\right),\\left(1650,-920\\right),\\left(1410,-800\\right)\\right)\\left\\{d_{i}=0\\right\\}", fill: true, fillOpacity: "1" });
+  ex.push({ type: "expression", id: String(id++), ...D, latex: "\\operatorname{polygon}\\left(\\left(0,-420\\right),\\left(3000,-420\\right)\\right)", fill: false, colorLatex: "C_{bar}", lineWidth: "10" });
+  ex.push({ type: "expression", id: String(id++), folderId: df, color: "#fa7e19", latex: `\\left(\\left(I-1\\right)\\cdot\\frac{3000}{${frames > 1 ? frames - 1 : 1}},-420\\right)`, pointSize: "10", movablePointSize: "10" });
+  ex.push({ type: "expression", id: String(id++), ...D, latex: "\\left(1500,-210\\right)", showLabel: true, label: title, hidden: true, labelSize: "1.4", labelOrientation: "center" });
+  for (let k = 1; k <= C; k++) {
+    const [lb] = bounds(k), s = sfx(k);
+    ex.push({ type: "expression", id: String(id++), folderId: df, color: "#388c46", latex: `\\operatorname{polygon}\\left(\\left(F${s}\\left(I-${lb}\\right),0\\right),\\left(F${s}\\left(I-${lb}\\right),20 G${s}\\left(I-${lb}\\right)\\right)\\right)${cond(k)}` });
+  }
+  const ms = (HOP / sr * 1000).toFixed(2);
+  const state = {
+    version: 11, randomSeed: "b1e7f5519720974b3160f63ec0f72c88",
+    graph: { viewport: { xmin: -568.4082546987474, ymin: -3541.228726318303, xmax: 4408.543369051632, ymax: 3892.699015486061 }, showGrid: false, showYAxis: false, xAxisNumbers: false, yAxisNumbers: false, polarNumbers: false, userLockedViewport: true },
+    expressions: { list: ex, ticker: { handlerLatex: `I \\to \\min(${frames}, \\max(1, I + d_{i} * \\operatorname{dt} / ${ms} )) , d_{i} \\to \\left\\{ I = ${frames} : 0, d_{i} \\right\\}`, minStepLatex: "0", open: true, playing: true } },
+    includeFunctionParametersInRandomSeed: true, doNotMigrateMovablePointStyle: true
+  };
+  return "Calc.setState(" + JSON.stringify(state) + ")";
+}
+
+// ---------- UI ----------
+$("go").onclick = async () => {
+  if (!audioFile) return;
+  const sr = +$("sr").value, N = Math.max(1, Math.min(60, +$("np").value | 0)), digits = Math.max(1, Math.min(5, +$("gd").value | 0)), power = +$("gp").value || 1;
+  const bar = $("bar"), st = $("status");
+  $("go").disabled = true; $("out").classList.add("hide"); bar.classList.remove("hide"); bar.value = 0;
+  try {
+    st.textContent = "Decoding audio…"; await tick();
+    const y = await decode(audioFile, sr);
+    st.textContent = "Analyzing…";
+    const { freqs, gains, frames } = await analyze(y, sr, N, power, p => { bar.value = p; });
+    st.textContent = "Building graph…"; await tick();
+    command = buildCommand(freqs, gains, frames, N, digits, sr, audioFile.name.replace(/\.[^.]+$/, ""));
+    const mb = command.length / 1048576;
+    $("s-fr").textContent = frames.toLocaleString();
+    $("s-du").textContent = (y.length / sr).toFixed(1) + " s";
+    $("s-sz").textContent = mb.toFixed(2) + " MB";
+    $("szwarn").classList.toggle("hide", mb <= 5);
+    $("out").classList.remove("hide"); st.textContent = "Done."; bar.value = 1;
+  } catch (e) { st.textContent = "Error: " + (e.message || "could not decode this file."); }
+  $("go").disabled = false;
+};
+$("copy").onclick = async () => {
+  try { await navigator.clipboard.writeText(command); $("copy").textContent = "Copied!"; }
+  catch (e) { $("ta").value = command; $("ta").classList.remove("hide"); $("ta").select(); $("copy").textContent = document.execCommand("copy") ? "Copied!" : "Copy from the box below"; }
+  setTimeout(() => $("copy").textContent = "Copy graph command", 2000);
+};
+$("toggle").onclick = () => {
+  const ta = $("ta"), show = ta.classList.contains("hide");
+  if (show) ta.value = command.length > 2e6 ? command.slice(0, 2e6) + "… (truncated preview; use Copy)" : command;
+  ta.classList.toggle("hide"); $("toggle").textContent = show ? "Hide text box" : "Show text box";
+};
+</script>
+</body>
+</html>
