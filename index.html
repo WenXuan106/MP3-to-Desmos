@@ -63,11 +63,15 @@ textarea{width:100%;height:90px;margin-top:10px;font:12px monospace;background:v
   <div class="row"><button id="copy">Copy graph command</button><button id="toggle" class="sec">Show text box</button></div>
   <textarea id="ta" class="hide" readonly></textarea>
   <ol>
-    <li>Open a new graph at desmos.com/calculator</li>
-    <li>Open developer tools (F12) and go to the Console tab</li>
-    <li>Paste the command and press Enter</li>
-    <li>Close developer tools. Playback starts automatically; use the play/pause button on the graph.</li>
+    <li>One time only: add the “Desmos Loader” bookmarklet below to your bookmarks.</li>
+    <li>Tap <b>Copy graph command</b> above.</li>
+    <li>Open desmos.com/calculator, then run the bookmarklet from your bookmarks. Allow clipboard access if asked. Playback starts automatically.</li>
   </ol>
+  <div class="row">
+    <a id="bm" style="padding:10px 18px;border-radius:8px;background:var(--ok);color:var(--acfg);font-weight:600;text-decoration:none">Desmos Loader</a>
+    <button id="bmcopy" class="sec">Copy bookmarklet code</button>
+  </div>
+  <small>Desktop: drag the green button to your bookmarks bar. Phone or tablet: copy the code, bookmark any page, then edit that bookmark’s address and paste the code in.</small>
 </div>
 </main>
 
@@ -241,6 +245,13 @@ $("copy").onclick = async () => {
   try { await navigator.clipboard.writeText(command); $("copy").textContent = "Copied!"; }
   catch (e) { $("ta").value = command; $("ta").classList.remove("hide"); $("ta").select(); $("copy").textContent = document.execCommand("copy") ? "Copied!" : "Copy from the box below"; }
   setTimeout(() => $("copy").textContent = "Copy graph command", 2000);
+};
+const BM = `javascript:(async()=>{try{const t=(await navigator.clipboard.readText()).trim();Calc.setState(JSON.parse(t.slice(14,-1)))}catch(e){alert('Copy the graph command on the converter first, then run this on desmos.com/calculator. '+e.message)}})()`;
+$("bm").href = BM;
+$("bmcopy").onclick = async () => {
+  try { await navigator.clipboard.writeText(BM); $("bmcopy").textContent = "Copied!"; }
+  catch (e) { $("ta").value = BM; $("ta").classList.remove("hide"); $("ta").select(); }
+  setTimeout(() => $("bmcopy").textContent = "Copy bookmarklet code", 2000);
 };
 $("toggle").onclick = () => {
   const ta = $("ta"), show = ta.classList.contains("hide");
