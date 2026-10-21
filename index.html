@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>MP3/WAV to Desmos Converter</title>
+<title>Audio and MIDI to Desmos</title>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
---bg:#f6f7f9;--card:#fff;--fg:#1c2026;--mut:#5d6672;--bd:#d9dde3;--ac:#2d70b3;--acfg:#fff;--ok:#2c8543}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171b;--card:#1d2127;--fg:#e8ebef;--mut:#9aa4b0;--bd:#30363e;--ac:#5b9bd8;--acfg:#0d1117;--ok:#58b873}}
-:root[data-theme="dark"]{--bg:#14171b;--card:#1d2127;--fg:#e8ebef;--mut:#9aa4b0;--bd:#30363e;--ac:#5b9bd8;--acfg:#0d1117;--ok:#58b873}
+--bg:#f6f7f9;--card:#fff;--fg:#1c2026;--mut:#5d6672;--bd:#d9dde3;--ac:#2d70b3;--acfg:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171b;--card:#1d2127;--fg:#e8ebef;--mut:#9aa4b0;--bd:#30363e;--ac:#5b9bd8;--acfg:#0d1117}}
+:root[data-theme="dark"]{--bg:#14171b;--card:#1d2127;--fg:#e8ebef;--mut:#9aa4b0;--bd:#30363e;--ac:#5b9bd8;--acfg:#0d1117}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{max-width:720px;margin:0 auto;padding:24px 16px 48px}
@@ -16,83 +16,108 @@ h1{font-size:1.5rem;margin:0 0 4px}
 p.sub{color:var(--mut);margin:0 0 20px}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:16px}
 #drop{border:2px dashed var(--bd);border-radius:12px;padding:28px 12px;text-align:center;cursor:pointer;color:var(--mut)}
-#drop.on{border-color:var(--ac);color:var(--fg)}
+#drop.on{border-color:var(--ac)}
 #drop b{color:var(--fg)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
 label{display:block;font-size:.8rem;color:var(--mut)}
 select,input[type=number]{width:100%;margin-top:4px;padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--fg);font:inherit}
 small{display:block;margin-top:2px;color:var(--mut);font-size:.72rem}
 button{font:inherit;padding:10px 18px;border-radius:8px;border:0;background:var(--ac);color:var(--acfg);cursor:pointer;font-weight:600}
-button:disabled{opacity:.5;cursor:default}
 button.sec{background:transparent;color:var(--fg);border:1px solid var(--bd)}
-.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-progress{width:100%;height:10px;margin-top:12px}
-#status{margin-top:8px;color:var(--mut);font-size:.9rem;min-height:1.3em}
-.stats{display:flex;gap:18px;flex-wrap:wrap;font-size:.9rem;margin-bottom:6px}
-.stats span b{display:block;font-size:1.1rem}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.chk{display:flex;gap:8px;align-items:center;margin-top:14px;font-size:.9rem;color:var(--fg)}
+textarea{width:100%;height:110px;margin-top:10px;font:12px monospace;background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:8px}
+#info{font-size:.9rem;color:var(--mut);margin-top:10px}
 .warn{color:#c0392b}
 ol{padding-left:20px;margin:8px 0 0}
-textarea{width:100%;height:90px;margin-top:10px;font:12px monospace;background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:8px}
 .hide{display:none}
 </style>
 </head>
 <body>
 <main>
-<h1>MP3/WAV to Desmos Converter</h1>
-<p class="sub">Turns an audio file into a Desmos graph that plays it back with sine tones. Everything runs in your browser; nothing is uploaded.</p>
+<h1>Audio and MIDI to Desmos</h1>
+<p class="sub">Turns a MIDI file, or the main melody of an MP3 or WAV, into a Desmos formula you can paste straight into a cell, then play with Desmos Audio Trace. No developer tools or bookmarklet needed. A full song (up to 5 minutes) is turned into one single Desmos equation automatically. At each moment it follows the loudest of the bass, mid and lead parts. No files to save.</p>
 
 <div class="card">
-  <div id="drop"><b id="fname">Drop an MP3 or WAV here</b><br>or tap to choose a file</div>
-  <input id="file" type="file" accept="audio/*,.mp3,.wav" class="hide">
-  <div class="grid">
-    <label>Sample rate (Hz)<select id="sr"><option>8000</option><option>9000</option><option>10000</option><option selected>12000</option><option>16000</option><option>22050</option></select><small>Lower = smaller graph</small></label>
-    <label>Partials per frame<input id="np" type="number" min="1" max="60" value="30"><small>More = more detail, more noise</small></label>
-    <label>Gain digits<input id="gd" type="number" min="1" max="5" value="3"><small>More = precise, bigger graph</small></label>
-    <label>Gain scaling power<input id="gp" type="number" min="0.1" max="2" step="0.1" value="1.0"><small>0.5 is sqrt; 0.7-1.0 is clearer</small></label>
+  <div id="drop"><b id="fname">Drop a MIDI, MP3 or WAV file here</b><br>or tap to choose a file</div>
+  <input id="file" type="file" accept=".mid,.midi,.mp3,.wav,audio/*" class="hide">
+  <div id="opts" class="hide">
+    <div class="grid">
+      <label>Track<select id="trk"></select><small>One note at a time is used</small></label>
+      <label>Max events / notes<input id="len" type="number" min="1" value="125"><small>More = longer formula</small></label>
+      <label>Transpose (semitones)<input id="tp" type="number" value="22"></label>
+      <label id="silwrap" class="hide">Silence threshold (%)<input id="sil" type="number" min="1" max="60" value="8"><small>Higher = ignores quieter parts</small></label>
+      <label id="allwrap" class="chk hide"><input id="allv" type="checkbox">Keep all instruments (one equation, three curves)</label>
+      <label>Formula format<select id="fmt"><option value="latex">Standard (LaTeX)</option><option value="text">Plain text</option></select><small>Try Plain text if the paste shows raw symbols</small></label>
+    </div>
+    <label class="chk"><input id="fold" type="checkbox"> Fold all notes into one octave (use if the melody is too wide)</label>
+    <div class="row"><button id="auto" class="sec">Auto-fit transpose</button></div>
+    <div id="midiwrap" class="hide"></div>
+    <div id="info"></div>
   </div>
-  <div class="row"><button id="go" disabled>Convert</button></div>
-  <progress id="bar" value="0" max="1" class="hide"></progress>
-  <div id="status"></div>
 </div>
 
 <div class="card hide" id="out">
-  <div class="stats">
-    <span>Frames<b id="s-fr">-</b></span><span>Duration<b id="s-du">-</b></span><span>Graph size<b id="s-sz">-</b></span>
-  </div>
-  <div id="szwarn" class="warn hide">Over Desmos’s ~5 MB graph limit. Try a lower sample rate, fewer partials, fewer gain digits, or a shorter clip.</div>
-  <div class="row"><button id="copy">Copy graph command</button><button id="toggle" class="sec">Show text box</button></div>
-  <textarea id="ta" class="hide" readonly></textarea>
+  <div id="single"><div class="row" style="margin-top:0"><button id="copy">Copy formula</button></div>
+  <textarea id="ta" readonly></textarea></div>
+  <div id="all"></div>
+  <b style="display:block;margin-top:14px">Play it in Desmos</b>
   <ol>
-    <li>One time only: add the “Desmos Loader” bookmarklet below to your bookmarks.</li>
-    <li>Tap <b>Copy graph command</b> above.</li>
-    <li>Open desmos.com/calculator, then run the bookmarklet from your bookmarks. Allow clipboard access if asked. Playback starts automatically.</li>
+    <li>Open desmos.com/calculator. In graph settings, set both X and Y to exactly 0 to 100, and don’t zoom or pan afterwards.</li>
+    <li>Paste the formula into an empty expression cell.</li>
+    <li>Select the formula so it is highlighted.</li>
+    <li>Press Alt+T (Option+T on Mac or iPad keyboard) to turn on Audio Trace. Set the tempo with Alt/Option+1 to 5.</li>
+    <li>Press H to play.</li>
   </ol>
+  <small>Audio Trace uses keyboard shortcuts, so on an iPad you need a hardware keyboard.</small>
+  <b style="display:block;margin-top:14px">Optional: load it with one tap (bookmarklet)</b>
+  <small>If pasting gives errors, this inserts the copied formula using Desmos’s own API (the same method img2desmos uses) and sets both axes to 0 to 100 for you. Copy the formula, open desmos.com/calculator, then run the bookmarklet. Use the Standard (LaTeX) format with it.</small>
   <div class="row">
-    <a id="bm" style="padding:10px 18px;border-radius:8px;background:var(--ok);color:var(--acfg);font-weight:600;text-decoration:none">Desmos Loader</a>
+    <a id="bm" style="padding:10px 18px;border-radius:8px;background:var(--ac);color:var(--acfg);font-weight:600;text-decoration:none">Desmos Loader</a>
     <button id="bmcopy" class="sec">Copy bookmarklet code</button>
   </div>
-  <small>Desktop: drag the green button to your bookmarks bar. Phone or tablet: copy the code, bookmark any page, then edit that bookmark’s address and paste the code in.</small>
+  <small>Desktop: drag the blue button to your bookmarks bar. iPad: copy the code, bookmark any page in Safari, edit that bookmark’s address and paste the code in. To run it, open your bookmarks from the address bar on the Desmos page.</small>
 </div>
 </main>
 
 <script>
 const $ = id => document.getElementById(id);
-let audioFile = null, command = "";
-const MAX_LIST = 9999, HOP = 256, NFFT = 1024, PEAK_RATIO = 0.01, PEAK_HZ = 24;
+let tracks = [];
 
-// ---------- file input ----------
 const drop = $("drop"), fileIn = $("file");
 drop.onclick = () => fileIn.click();
-fileIn.onchange = () => setFile(fileIn.files[0]);
+fileIn.onchange = () => load(fileIn.files[0]);
 drop.ondragover = e => { e.preventDefault(); drop.classList.add("on"); };
 drop.ondragleave = () => drop.classList.remove("on");
-drop.ondrop = e => { e.preventDefault(); drop.classList.remove("on"); setFile(e.dataTransfer.files[0]); };
-function setFile(f) {
-  if (!f) return;
-  audioFile = f; $("fname").textContent = f.name; $("go").disabled = false;
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("on"); load(e.dataTransfer.files[0]); };
+
+// ---------- MIDI parsing ----------
+function parseMidi(buf) {
+  const d = new DataView(buf), u = new Uint8Array(buf); let p = 0;
+  const str = n => { let s = ""; for (let i = 0; i < n; i++) s += String.fromCharCode(u[p + i]); p += n; return s; };
+  if (str(4) !== "MThd") throw new Error("This doesn’t look like a MIDI file.");
+  const hl = d.getUint32(p); p += 4; const n = d.getUint16(p + 2); p += hl;
+  const out = [];
+  while (out.length < n && p + 8 <= u.length) {
+    const id = str(4), len = d.getUint32(p); p += 4; const end = Math.min(p + len, u.length);
+    if (id !== "MTrk") { p = end; continue; }
+    const ev = []; let rs = 0, name = "";
+    const vlq = () => { let v = 0, b; do { b = u[p++]; v = (v << 7) | (b & 127); } while ((b & 128) && p < end); return v; };
+    while (p < end) {
+      const dt = vlq(); let s = u[p];
+      if (s === 0xFF) { const ty = u[p + 1]; p += 2; const l = vlq(); if (ty === 3) name = new TextDecoder().decode(u.slice(p, p + l)); p += l; ev.push({ dt, type: "meta" }); continue; }
+      if (s === 0xF0 || s === 0xF7) { p++; const l = vlq(); p += l; ev.push({ dt, type: "sysex" }); continue; }
+      if (s & 128) { rs = s; p++; } else s = rs;
+      const hi = s >> 4; const a = u[p++]; let b = 0;
+      if (hi !== 0xC && hi !== 0xD) b = u[p++];
+      ev.push({ dt, type: hi === 8 ? "off" : hi === 9 ? "on" : "other", note: a, vel: b });
+    }
+    p = end; out.push({ name, ev });
+  }
+  return out;
 }
 
-// ---------- FFT ----------
+// ---------- audio melody detection (harmonic product spectrum) ----------
 function makeFFT(n) {
   const levels = Math.log2(n), rev = new Uint32Array(n), cos = new Float64Array(n / 2), sin = new Float64Array(n / 2);
   for (let i = 0; i < n; i++) { let r = 0; for (let b = 0; b < levels; b++) r |= ((i >> b) & 1) << (levels - 1 - b); rev[i] = r; }
@@ -108,155 +133,233 @@ function makeFFT(n) {
     }
   };
 }
-
-// ---------- peak finding (scipy.signal.find_peaks height + distance) ----------
-function findPeaks(d, minH, minDist) {
-  const peaks = [];
-  for (let i = 1; i < d.length - 1; i++) {
-    if (d[i - 1] < d[i]) {
-      let a = i + 1;
-      while (a < d.length - 1 && d[a] === d[i]) a++;
-      if (d[a] < d[i]) { peaks.push((i + a - 1) >> 1); i = a; }
-    }
-  }
-  const hp = peaks.filter(p => d[p] >= minH);
-  if (minDist <= 1) return hp;
-  const keep = new Uint8Array(hp.length).fill(1);
-  const order = hp.map((_, i) => i).sort((x, y) => d[hp[x]] - d[hp[y]]);
-  for (let o = order.length - 1; o >= 0; o--) {
-    const i = order[o]; if (!keep[i]) continue;
-    for (let k = i - 1; k >= 0 && hp[i] - hp[k] < minDist; k--) keep[k] = 0;
-    for (let k = i + 1; k < hp.length && hp[k] - hp[i] < minDist; k++) keep[k] = 0;
-  }
-  return hp.filter((_, i) => keep[i]);
-}
-
-// ---------- audio analysis ----------
-const tick = () => new Promise(r => setTimeout(r));
-async function decode(file, sr) {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: sr });
-  const buf = await ctx.decodeAudioData(await file.arrayBuffer());
-  const n = buf.length, y = new Float32Array(n), ch = buf.numberOfChannels;
-  for (let c = 0; c < ch; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) y[i] += d[i] / ch; }
-  ctx.close(); return y;
-}
-async function analyze(y, sr, N, power, onProg) {
-  const half = NFFT / 2, frames = 1 + Math.floor(y.length / HOP), bins = half + 1;
-  const pad = new Float32Array(y.length + NFFT);
-  pad.set(y, half);
-  for (let i = 1; i <= half; i++) { pad[half - i] = y[Math.min(i, y.length - 1)]; pad[half + y.length - 1 + i] = y[Math.max(y.length - 1 - i, 0)]; }
-  const win = new Float64Array(NFFT).map((_, k) => 0.5 - 0.5 * Math.cos(2 * Math.PI * k / NFFT));
-  const fft = makeFFT(NFFT), re = new Float64Array(NFFT), im = new Float64Array(NFFT), mag = new Float32Array(bins);
-  const freqs = new Float32Array(frames * N), gains = new Float32Array(frames * N);
-  const minDist = Math.max(1, Math.floor(PEAK_HZ * NFFT / sr));
-  let maxGain = 0;
-  for (let f = 0; f < frames; f++) {
-    const s = f * HOP; let mx = 0;
-    for (let k = 0; k < NFFT; k++) { re[k] = (pad[s + k] || 0) * win[k]; im[k] = 0; }
+async function analyzeAudio(file) {
+  const SR = 11025, N = 4096, HOP = 512, MAXS = 300;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR });
+  const buf = await ctx.decodeAudioData(await file.arrayBuffer()); ctx.close();
+  const len = Math.min(buf.length, SR * MAXS), y = new Float32Array(Math.max(len, N));
+  for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < len; i++) y[i] += d[i] / buf.numberOfChannels; }
+  const nf = Math.floor((y.length - N) / HOP) + 1, fft = makeFFT(N);
+  const win = new Float64Array(N).map((_, k) => 0.5 - 0.5 * Math.cos(2 * Math.PI * k / N));
+  const re = new Float64Array(N), im = new Float64Array(N), lm = new Float64Array(N / 2);
+  const V = [['Bass', 50, 250], ['Mid', 200, 800], ['Lead', 500, 1300]].map(([name, lo, hi]) => ({ name, kmin: Math.ceil(lo * N / SR), kmax: Math.floor(hi * N / SR), midi: new Float32Array(nf), rms: new Float32Array(nf) }));
+  for (let f = 0; f < nf; f++) {
+    let e = 0;
+    for (let k = 0; k < N; k++) { const v = y[f * HOP + k]; e += v * v; re[k] = v * win[k]; im[k] = 0; }
     fft(re, im);
-    for (let k = 0; k < bins; k++) { mag[k] = Math.hypot(re[k], im[k]); if (mag[k] > mx) mx = mag[k]; }
-    const idx = findPeaks(mag, mx > 0 ? mx * PEAK_RATIO : 0, minDist).sort((a, b) => mag[b] - mag[a]).slice(0, N);
-    for (let p = 0; p < idx.length; p++) {
-      freqs[f * N + p] = idx[p] * sr / NFFT; gains[f * N + p] = mag[idx[p]];
-      if (mag[idx[p]] > maxGain) maxGain = mag[idx[p]];
+    for (let k = 0; k < N / 2; k++) lm[k] = Math.log(Math.hypot(re[k], im[k]) + 1e-6);
+    for (const v of V) {
+      let best = v.kmin, bs = -Infinity, en = 0;
+      for (let k = v.kmin; k <= v.kmax; k++) { const s = lm[k] + lm[2 * k] + lm[3 * k] + lm[4 * k]; if (s > bs) { bs = s; best = k; } en += Math.exp(2 * lm[k]); }
+      const a = lm[best - 1], b = lm[best], c = lm[best + 1], den = a - 2 * b + c;
+      const delta = den ? Math.max(-0.5, Math.min(0.5, 0.5 * (a - c) / den)) : 0;
+      v.midi[f] = 69 + 12 * Math.log2((best + delta) * SR / N / 440);
+      v.rms[f] = Math.sqrt(en);
     }
-    if (f % 300 === 0) { onProg(f / frames); await tick(); }
+    if (f % 100 === 0) { $('fname').textContent = 'Analyzing... ' + Math.round(100 * f / nf) + '%'; await new Promise(r => setTimeout(r)); }
   }
-  for (let i = 0; i < gains.length; i++) gains[i] = maxGain > 1e-6 ? Math.pow(gains[i] / maxGain, power) : 0;
-  return { freqs, gains, frames };
+  return V.map(v => { const ev = []; ev.audio = { midi: v.midi, rms: v.rms }; return { name: v.name, ev }; });
+}
+function audioNotes(a, thr, ml = 3) {
+  let mx = 0; for (const v of a.rms) if (v > mx) mx = v;
+  const q = Array.from(a.midi, (m, i) => a.rms[i] >= thr * mx ? Math.round(m) : -1), s = q.slice();
+  for (let i = 1; i < q.length - 1; i++) if (q[i - 1] === q[i + 1] && q[i] !== q[i - 1]) s[i] = q[i - 1];
+  const notes = []; let i = 0;
+  while (i < s.length) {
+    if (s[i] < 0) { i++; continue; }
+    let j = i; while (j + 1 < s.length && s[j + 1] === s[i]) j++;
+    if (j - i + 1 >= ml) notes.push([i, j + 1, s[i]]);
+    i = j + 1;
+  }
+  return notes;
 }
 
-// ---------- Desmos state ----------
-function buildCommand(freqs, gains, frames, N, digits, sr, title) {
-  const C = Math.ceil(frames / MAX_LIST), sfx = k => k === 1 ? "" : "_" + k;
-  const scale = "0." + "0".repeat(digits - 1) + "1", top = 10 ** digits;
-  const gs = g => { const s = g * top; if (s < 0.5) return "0"; const r = Math.round(s); return String(r >= top ? top : r); };
-  const ex = [], bounds = k => [(k - 1) * MAX_LIST, k === C ? frames : k * MAX_LIST];
-  const cond = k => { const [lb, ub] = bounds(k); return C === 1 ? "\\left\\{d_{i}=1\\right\\}" : k === 1 ? `\\left\\{1 \\le I \\le ${ub}, d_{i}=1\\right\\}` : `\\left\\{${lb} < I \\le ${ub}, d_{i}=1\\right\\}`; };
-  let id = 3;
-  ex.push({ type: "folder", id: "2", title: "Frequencies and Amplitudes (do not open)", collapsed: true });
-  for (let k = 1; k <= C; k++) {
-    const [lb, ub] = bounds(k), fl = [], gl = [];
-    for (let p = 0; p < N; p++) {
-      const fa = [], ga = [];
-      for (let f = lb; f < ub; f++) { fa.push(Math.round(freqs[f * N + p])); ga.push(gs(gains[f * N + p])); }
-      fl.push("[" + fa.join(",") + "][i]"); gl.push("[" + ga.join(",") + "][i]");
+// ---------- conversion (port of graph.py) ----------
+const des = m => Math.log(0.002 * 440 * Math.pow(2, (m - 69) / 12)) / Math.log(1.00708);
+function toNotes(ev, lth) {
+  if (ev.audio) return audioNotes(ev.audio, (+$("sil").value || 8) / 100).slice(0, lth);
+  let time = 0, note = 0, start = 0, on = false; const notes = [];
+  for (const m of ev.slice(0, lth)) {
+    time += m.dt;
+    if (!on) { if (m.type === "on" && m.vel > 0) { on = true; note = m.note; start = time; } }
+    else if (m.type === "off" || (m.type === "on" && m.vel === 0)) {
+      if (m.note === note) { on = false; notes.push([start, time, note]); }
     }
-    ex.push({ type: "expression", id: String(id++), folderId: "2", color: "#2d70b3", latex: `F${sfx(k)}(i) = [${fl.join(",")}]`, hidden: true });
-    ex.push({ type: "expression", id: String(id++), folderId: "2", color: "#388c46", latex: `G${sfx(k)}(i) = [${gl.join(",")}]`, hidden: true });
   }
-  for (let k = 1; k <= C; k++) {
-    const [lb] = bounds(k), s = sfx(k);
-    ex.push({ type: "expression", id: String(id++), color: "#6042a6", latex: `\\operatorname{tone}\\left(F${s}(I-${lb}),${scale}G${s}(I-${lb})\\right)${cond(k)}` });
+  return notes;
+}
+const mapNote = (n, tp, fold) => fold ? des((((n + tp) % 12) + 12) % 12 + 72) : des(n + tp);
+
+function renderOne() {
+  if ($('allv').checked) return renderMulti();
+  const cap = Math.max(10, +$('len').value | 0), thr = (+$('sil').value || 8) / 100, box = $('all'), info = $('info');
+  const n = tracks[0].ev.audio.midi.length, mxs = tracks.map(t => Math.max(...t.ev.audio.rms) || 1);
+  const midi = new Float32Array(n), rms = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let bv = 0, bn = -1;
+    tracks.forEach((t, v) => { const r = t.ev.audio.rms[i] / mxs[v]; if (r > bn) { bn = r; bv = v; } });
+    midi[i] = tracks[bv].ev.audio.midi[i]; rms[i] = bn;
   }
-  const vf = String(id++), cf = String(id++), df = String(id++);
-  ex.push({ type: "folder", id: vf, title: "Variables", collapsed: true });
-  ex.push({ type: "expression", id: String(id++), folderId: vf, color: "#000000", latex: "I=1", hidden: true, slider: { hardMin: true, hardMax: true, min: "1", max: String(frames) } });
-  ex.push({ type: "expression", id: String(id++), folderId: vf, color: "#388c46", latex: "d_{i}=1", hidden: true });
-  ex.push({ type: "folder", id: cf, title: "Colors", collapsed: true });
-  ex.push({ type: "expression", id: String(id++), folderId: cf, color: "#6042a6", latex: "C_{middle}=\\left\\{d_{i}=1:\\operatorname{rgb}\\left(44,133,67\\right),\\operatorname{rgb}\\left(176,58,58\\right)\\right\\}" });
-  ex.push({ type: "expression", id: String(id++), folderId: cf, color: "#000000", latex: "C_{bar}=\\operatorname{rgb}\\left(90,90,90\\right)" });
-  ex.push({ type: "folder", id: df, title: "Display", collapsed: true });
-  const D = { folderId: df, color: "#000000" };
-  ex.push({ type: "expression", id: String(id++), folderId: df, color: "#c74440", latex: "\\left(x-1500\\right)^{2}+\\left(y+920\\right)^{2}\\le300^{2}", colorLatex: "C_{middle}", clickableInfo: { enabled: true, latex: `\\left\\{I=${frames}:I\\to 1\\right\\},d_{i}\\to1-d_{i}` } });
-  ex.push({ type: "expression", id: String(id++), ...D, latex: "\\operatorname{polygon}\\left(\\left(1430,-1040\\right),\\left(1430,-800\\right)\\right)\\left\\{d_{i}=1\\right\\}", fill: false, lineWidth: "5" });
-  ex.push({ type: "expression", id: String(id++), ...D, latex: "\\operatorname{polygon}\\left(\\left(1570,-1040\\right),\\left(1570,-800\\right)\\right)\\left\\{d_{i}=1\\right\\}", fill: false, lineWidth: "5" });
-  ex.push({ type: "expression", id: String(id++), ...D, latex: "\\operatorname{polygon}\\left(\\left(1410,-1040\\right),\\left(1650,-920\\right),\\left(1410,-800\\right)\\right)\\left\\{d_{i}=0\\right\\}", fill: true, fillOpacity: "1" });
-  ex.push({ type: "expression", id: String(id++), ...D, latex: "\\operatorname{polygon}\\left(\\left(0,-420\\right),\\left(3000,-420\\right)\\right)", fill: false, colorLatex: "C_{bar}", lineWidth: "10" });
-  ex.push({ type: "expression", id: String(id++), folderId: df, color: "#fa7e19", latex: `\\left(\\left(I-1\\right)\\cdot\\frac{3000}{${frames > 1 ? frames - 1 : 1}},-420\\right)`, pointSize: "10", movablePointSize: "10" });
-  ex.push({ type: "expression", id: String(id++), ...D, latex: "\\left(1500,-210\\right)", showLabel: true, label: title, hidden: true, labelSize: "1.4", labelOrientation: "center" });
-  for (let k = 1; k <= C; k++) {
-    const [lb] = bounds(k), s = sfx(k);
-    ex.push({ type: "expression", id: String(id++), folderId: df, color: "#388c46", latex: `\\operatorname{polygon}\\left(\\left(F${s}\\left(I-${lb}\\right),0\\right),\\left(F${s}\\left(I-${lb}\\right),20 G${s}\\left(I-${lb}\\right)\\right)\\right)${cond(k)}` });
-  }
-  const ms = (HOP / sr * 1000).toFixed(2);
-  const state = {
-    version: 11, randomSeed: "b1e7f5519720974b3160f63ec0f72c88",
-    graph: { viewport: { xmin: -568.4082546987474, ymin: -3541.228726318303, xmax: 4408.543369051632, ymax: 3892.699015486061 }, showGrid: false, showYAxis: false, xAxisNumbers: false, yAxisNumbers: false, polarNumbers: false, userLockedViewport: true },
-    expressions: { list: ex, ticker: { handlerLatex: `I \\to \\min(${frames}, \\max(1, I + d_{i} * \\operatorname{dt} / ${ms} )) , d_{i} \\to \\left\\{ I = ${frames} : 0, d_{i} \\right\\}`, minStepLatex: "0", open: true, playing: true } },
-    includeFunctionParametersInRandomSeed: true, doNotMigrateMovablePointStyle: true
+  let notes = [], ml = 3;
+  do { notes = audioNotes({ midi, rms }, thr, ml); ml++; } while (notes.length > cap && ml < 300);
+  box.innerHTML = '';
+  if (!notes.length) { info.innerHTML = '<span class=warn>No notes found. Try lowering the silence threshold.</span>'; $('out').classList.add('hide'); return; }
+  const ns = notes.map(x => x[2]), mn = Math.min(...ns), mx = Math.max(...ns), fold = mx - mn > 11;
+  const center = 69 + 12 * (50 * Math.log(1.00708) - Math.log(0.88)) / Math.LN2, tp = fold ? 0 : Math.round(center - (mn + mx) / 2), f = F(notes, tp, fold);
+  const h = document.createElement('div');
+  h.innerHTML = `<b>One equation</b> <small style='display:inline'>${notes.length} notes, about ${Math.round(notes[notes.length - 1][1] * 512 / 11025)} s, ${(f.length / 1024).toFixed(0)} KB${fold ? ', all pitches folded into one octave' : ''}</small><textarea readonly></textarea><div class=row><button>Copy formula</button></div>`;
+  h.querySelector('textarea').value = f;
+  h.querySelector('button').onclick = async e => {
+    try { await navigator.clipboard.writeText(f); } catch (x) { h.querySelector('textarea').select(); document.execCommand('copy'); }
+    e.target.textContent = 'Copied!'; setTimeout(() => e.target.textContent = 'Copy formula', 2000);
   };
-  return "Calc.setState(" + JSON.stringify(state) + ")";
+  box.appendChild(h);
+  info.innerHTML = f.length > 80000 ? '<span class=warn>Large formula. If Desmos is slow, lower Max notes.</span>' : 'Tip: lower Max notes for a smaller, smoother formula.';
+  $('out').classList.remove('hide');
+}
+function renderMulti() {
+  const cap = Math.max(10, Math.floor((+$('len').value | 0) / 3)), thr = (+$('sil').value || 8) / 100, box = $('all'), info = $('info'), vs = [];
+  const center = 69 + 12 * (50 * Math.log(1.00708) - Math.log(0.88)) / Math.LN2;
+  tracks.forEach(t => {
+    let notes = [], ml = 3;
+    do { notes = audioNotes(t.ev.audio, thr, ml); ml++; } while (notes.length > cap && ml < 300);
+    if (notes.length) vs.push(notes);
+  });
+  box.innerHTML = '';
+  if (!vs.length) { info.innerHTML = '<span class=warn>No notes found. Try lowering the silence threshold.</span>'; $('out').classList.add('hide'); return; }
+  const s0 = Math.min(...vs.map(n => n[0][0])), T = ((Math.max(...vs.map(n => n[n.length - 1][1])) - s0) / 100) || 1;
+  const parts = vs.map(notes => { const ns = notes.map(x => x[2]), mn = Math.min(...ns), mx = Math.max(...ns), fold = mx - mn > 11; return F(notes, fold ? 0 : Math.round(center - (mn + mx) / 2), fold, [s0, T]).slice(2); });
+  const f = fix('y=\\left[' + parts.join(',') + '\\right]');
+  const h = document.createElement('div');
+  h.innerHTML = `<b>One equation, ${vs.length} curves</b> <small style='display:inline'>${vs.reduce((s, n) => s + n.length, 0)} notes, ${(f.length / 1024).toFixed(0)} KB</small><textarea readonly></textarea><div class=row><button>Copy formula</button></div>`;
+  h.querySelector('textarea').value = f;
+  h.querySelector('button').onclick = async e => {
+    try { await navigator.clipboard.writeText(f); } catch (x) { h.querySelector('textarea').select(); document.execCommand('copy'); }
+    e.target.textContent = 'Copied!'; setTimeout(() => e.target.textContent = 'Copy formula', 2000);
+  };
+  box.appendChild(h);
+  info.textContent = 'Audio Trace may play the curves one at a time instead of layered on top of each other.';
+  $('out').classList.remove('hide');
+}
+function fix(f) { return $('fmt').value === 'text' ? f.split('\\left').join('').split('\\right').join('').split('\\{').join('{').split('\\}').join('}').split('\\le').join('<=') : f; }
+function F(notes, tp, fold, g) { return fix(F0(notes, tp, fold, g)); }
+function F0(notes, tp, fold, g) {
+  const s0 = g ? g[0] : notes[0][0], T = g ? g[1] : ((notes[notes.length - 1][1] - s0) / 100) || 1;
+  return 'y=\\left\\{' + notes.map(([a, b, n]) => `${((a - s0) / T).toFixed(2)}\\le x\\le${((b - s0) / T).toFixed(2)}:${mapNote(n, tp, fold).toFixed(2)}`).join(',') + '\\right\\}';
+}
+function renderAll() {
+  const lth = Math.max(1, +$('len').value | 0), box = $('all'), info = $('info');
+  const center = 69 + 12 * (50 * Math.log(1.00708) - Math.log(0.88)) / Math.LN2;
+  box.innerHTML = '';
+  tracks.forEach(t => {
+    const notes = toNotes(t.ev, lth); if (!notes.length) return;
+    const ns = notes.map(n => n[2]), mn = Math.min(...ns), mx = Math.max(...ns), fold = mx - mn > 11, tp = fold ? 0 : Math.round(center - (mn + mx) / 2), f = F(notes, tp, fold);
+    const h = document.createElement('div'); h.style.marginTop = '14px';
+    h.innerHTML = `<b>${t.name}</b> <small style='display:inline'>${notes.length} notes${fold ? ', folded into one octave' : ''}</small><textarea readonly></textarea><div class=row><button class=sec>Copy ${t.name} formula</button></div>`;
+    h.querySelector('textarea').value = f;
+    h.querySelector('button').onclick = async e => {
+      try { await navigator.clipboard.writeText(f); } catch (x) { h.querySelector('textarea').select(); document.execCommand('copy'); }
+      e.target.textContent = 'Copied!'; setTimeout(() => e.target.textContent = `Copy ${t.name} formula`, 2000);
+    };
+    box.appendChild(h);
+  });
+  info.innerHTML = box.children.length ? 'Each voice is fitted to the 0 to 100 range on its own.' : '<span class=warn>No notes found. Try lowering the silence threshold.</span>';
+  $('out').classList.toggle('hide', !box.children.length);
+}
+function render() {
+  if (tracks[0] && tracks[0].ev.audio) return renderOne();
+  const t = tracks[+$("trk").value]; if (!t) return;
+  const lth = Math.max(1, +$("len").value | 0), tp = +$("tp").value | 0, fold = $("fold").checked;
+  const notes = toNotes(t.ev, lth), info = $("info");
+  if (!notes.length) { $("out").classList.add("hide"); info.innerHTML = '<span class="warn">No complete notes found in that track and range. Try another track or more events.</span>'; return; }
+  const s0 = notes[0][0], T = ((notes[notes.length - 1][1] - s0) / 100) || 1;
+  const ys = notes.map(([, , n]) => mapNote(n, tp, fold));
+  const f = "y=\\left\\{" + notes.map(([a, b], i) => `${((a - s0) / T).toFixed(2)}\\le x\\le${((b - s0) / T).toFixed(2)}:${ys[i].toFixed(2)}`).join(",") + "\\right\\}";
+  const lo = Math.min(...ys), hi = Math.max(...ys), bad = lo < 0 || hi > 100;
+  info.innerHTML = `${notes.length} notes · pitch range ${lo.toFixed(1)} to ${hi.toFixed(1)}` + (bad ? '<br><span class="warn">Some notes fall outside 0 to 100. Use Auto-fit, change the transpose, or fold into one octave.</span>' : " (fits the graph)");
+  $("ta").value = fix(f); $("out").classList.remove("hide");
 }
 
-// ---------- UI ----------
-$("go").onclick = async () => {
-  if (!audioFile) return;
-  const sr = +$("sr").value, N = Math.max(1, Math.min(60, +$("np").value | 0)), digits = Math.max(1, Math.min(5, +$("gd").value | 0)), power = +$("gp").value || 1;
-  const bar = $("bar"), st = $("status");
-  $("go").disabled = true; $("out").classList.add("hide"); bar.classList.remove("hide"); bar.value = 0;
+async function load(file) {
+  if (!file) return;
   try {
-    st.textContent = "Decoding audio…"; await tick();
-    const y = await decode(audioFile, sr);
-    st.textContent = "Analyzing…";
-    const { freqs, gains, frames } = await analyze(y, sr, N, power, p => { bar.value = p; });
-    st.textContent = "Building graph…"; await tick();
-    command = buildCommand(freqs, gains, frames, N, digits, sr, audioFile.name.replace(/\.[^.]+$/, ""));
-    const mb = command.length / 1048576;
-    $("s-fr").textContent = frames.toLocaleString();
-    $("s-du").textContent = (y.length / sr).toFixed(1) + " s";
-    $("s-sz").textContent = mb.toFixed(2) + " MB";
-    $("szwarn").classList.toggle("hide", mb <= 5);
-    $("out").classList.remove("hide"); st.textContent = "Done."; bar.value = 1;
-  } catch (e) { st.textContent = "Error: " + (e.message || "could not decode this file."); }
-  $("go").disabled = false;
+    const audio = !/midi?$/i.test(file.name);
+    $("silwrap").classList.toggle("hide", !audio);
+    $("allwrap").classList.toggle("hide", !audio);
+    [$("trk"), $("tp"), $("fold"), $("auto")].forEach(el => el.parentNode.classList.toggle("hide", audio));
+    $("single").classList.toggle("hide", audio);
+    $("len").value = audio ? 600 : 125;
+    if (audio) tracks = await analyzeAudio(file);
+    else tracks = parseMidi(await file.arrayBuffer());
+    $("fname").textContent = file.name;
+    const sel = $("trk"); sel.innerHTML = ""; let first = -1;
+    tracks.forEach((t, i) => {
+      const k = t.ev.filter(e => e.type === "on" && e.vel > 0).length;
+      if (k && first < 0) first = i;
+      const o = document.createElement("option"); o.value = i; o.textContent = `Track ${i}${t.name ? " – " + t.name : ""} (${t.ev.audio ? "audio melody" : k + " notes"})`; sel.appendChild(o);
+    });
+    sel.value = first < 0 ? tracks.length - 1 : first; $("opts").classList.remove("hide"); render();
+  } catch (e) { $("fname").textContent = "Error: " + e.message; }
+}
+
+["trk", "len", "tp", "fold", "sil", "allv", "fmt"].forEach(id => $(id).addEventListener("input", render));
+$("auto").onclick = () => {
+  const notes = toNotes(tracks[+$("trk").value].ev, Math.max(1, +$("len").value | 0));
+  if (!notes.length) return;
+  const ns = notes.map(n => n[2]), mid = (Math.min(...ns) + Math.max(...ns)) / 2;
+  const center = 69 + 12 * (50 * Math.log(1.00708) - Math.log(0.88)) / Math.LN2;
+  $("tp").value = Math.round(center - mid); render();
+};
+// ---------- save voices as MIDI (zipped, since .mid downloads are not allowed here) ----------
+const INS = [['Piano', 0], ['Electric piano', 4], ['Nylon guitar', 24], ['Electric bass', 33], ['Violin', 40], ['Strings', 48], ['Trumpet', 56], ['Flute', 73], ['Square lead', 80], ['Synth pad', 88]], DEF = [33, 0, 73];
+$('midiwrap').innerHTML = '<div class=grid>' + ['Bass', 'Mid', 'Lead'].map((n, i) => `<label>${n} instrument<select id=in${i}>${INS.map(([l, p]) => `<option value=${p}${p === DEF[i] ? ' selected' : ''}>${l}</option>`).join('')}</select></label>`).join('') + '</div><div class=row><button id=midi class=sec>Save all voices as MIDI (zip)</button></div><small id=mmsg></small>';
+const vlq = v => { const b = [v & 127]; while (v >>= 7) b.unshift((v & 127) | 128); return b; };
+const u32 = n => [n >>> 24, (n >> 16) & 255, (n >> 8) & 255, n & 255], le2 = v => [v & 255, (v >> 8) & 255], le4 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, v >>> 24], str = s => Array.from(s, c => c.charCodeAt(0));
+const chunk = (id, d) => [...str(id), ...u32(d.length), ...d];
+function buildMidi() {
+  const trk = [chunk('MTrk', [0, 0xFF, 0x51, 3, 0x07, 0xA1, 0x20, 0, 0xFF, 0x2F, 0])], tk = x => Math.round(x * 512 / 11025 * 960);
+  tracks.forEach((t, i) => {
+    const ev = [];
+    toNotes(t.ev, 1e6).forEach(([a, b, n]) => ev.push([tk(a), 1, n], [Math.max(tk(b), tk(a) + 1), 0, n]));
+    ev.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+    const d = [0, 0xC0 | i, +$('in' + i).value]; let last = 0;
+    for (const [at, on, n] of ev) { d.push(...vlq(at - last), (on ? 0x90 : 0x80) | i, n, on ? 90 : 0); last = at; }
+    d.push(0, 0xFF, 0x2F, 0); trk.push(chunk('MTrk', d));
+  });
+  return Uint8Array.from([...chunk('MThd', [0, 1, 0, trk.length, 1, 0xE0]), ...trk.flat()]);
+}
+function crc32(d) {
+  let t = crc32.t, c; if (!t) { t = crc32.t = []; for (let n = 0; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } }
+  c = -1; for (const b of d) c = t[(c ^ b) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0;
+}
+function zip(name, data) {
+  const nb = str(name), crc = crc32(data), n = data.length;
+  const local = [0x50, 0x4B, 3, 4, ...le2(20), ...le2(0), ...le2(0), ...le2(0), ...le2(0x21), ...le4(crc), ...le4(n), ...le4(n), ...le2(nb.length), ...le2(0), ...nb];
+  const cen = [0x50, 0x4B, 1, 2, ...le2(20), ...le2(20), ...le2(0), ...le2(0), ...le2(0), ...le2(0x21), ...le4(crc), ...le4(n), ...le4(n), ...le2(nb.length), ...le2(0), ...le2(0), ...le2(0), ...le2(0), ...le4(0), ...le4(0), ...nb];
+  const end = [0x50, 0x4B, 5, 6, ...le2(0), ...le2(0), ...le2(1), ...le2(1), ...le4(cen.length), ...le4(local.length + n), ...le2(0)];
+  return Uint8Array.from([...local, ...data, ...cen, ...end]);
+}
+$('midi').onclick = async () => {
+  const msg = $('mmsg');
+  try {
+    const dl = window.claude ? await window.claude.use('downloads') : null;
+    if (!dl) { msg.textContent = 'Saving files is not available in this view.'; return; }
+    await dl.save({ filename: 'voices-midi.zip', data: zip('voices.mid', buildMidi()) });
+    msg.textContent = 'Saved. Unzip it in the Files app to get voices.mid.';
+  } catch (e) { msg.textContent = e && e.code === 'declined' ? '' : 'Could not save: ' + (e && e.message || e); }
+};
+const BM = `javascript:(async()=>{try{const t=(await navigator.clipboard.readText()).trim();Calc.setExpression({id:'song',latex:t,color:'#2d70b3'});Calc.setViewport([0,100,0,100]);Calc.updateSettings({showGrid:false})}catch(e){alert('Copy the formula on the converter first, then run this on desmos.com/calculator. '+e.message)}})()`;
+$('bm').href = BM;
+$('bmcopy').onclick = async () => {
+  try { await navigator.clipboard.writeText(BM); $('bmcopy').textContent = 'Copied!'; }
+  catch (e) { $('ta').value = BM; $('single').classList.remove('hide'); $('ta').select(); }
+  setTimeout(() => $('bmcopy').textContent = 'Copy bookmarklet code', 2000);
 };
 $("copy").onclick = async () => {
-  try { await navigator.clipboard.writeText(command); $("copy").textContent = "Copied!"; }
-  catch (e) { $("ta").value = command; $("ta").classList.remove("hide"); $("ta").select(); $("copy").textContent = document.execCommand("copy") ? "Copied!" : "Copy from the box below"; }
-  setTimeout(() => $("copy").textContent = "Copy graph command", 2000);
-};
-const BM = `javascript:(async()=>{try{const t=(await navigator.clipboard.readText()).trim();Calc.setState(JSON.parse(t.slice(14,-1)))}catch(e){alert('Copy the graph command on the converter first, then run this on desmos.com/calculator. '+e.message)}})()`;
-$("bm").href = BM;
-$("bmcopy").onclick = async () => {
-  try { await navigator.clipboard.writeText(BM); $("bmcopy").textContent = "Copied!"; }
-  catch (e) { $("ta").value = BM; $("ta").classList.remove("hide"); $("ta").select(); }
-  setTimeout(() => $("bmcopy").textContent = "Copy bookmarklet code", 2000);
-};
-$("toggle").onclick = () => {
-  const ta = $("ta"), show = ta.classList.contains("hide");
-  if (show) ta.value = command.length > 2e6 ? command.slice(0, 2e6) + "… (truncated preview; use Copy)" : command;
-  ta.classList.toggle("hide"); $("toggle").textContent = show ? "Hide text box" : "Show text box";
+  const ta = $("ta");
+  try { await navigator.clipboard.writeText(ta.value); $("copy").textContent = "Copied!"; }
+  catch (e) { ta.select(); $("copy").textContent = document.execCommand("copy") ? "Copied!" : "Select and copy the text"; }
+  setTimeout(() => $("copy").textContent = "Copy formula", 2000);
 };
 </script>
 </body>
