@@ -71,7 +71,7 @@ ol{padding-left:20px;margin:8px 0 0}
   </ol>
   <small>Audio Trace uses keyboard shortcuts, so on an iPad you need a hardware keyboard.</small>
   <b style="display:block;margin-top:14px">Optional: load it with one tap (bookmarklet)</b>
-  <small>If pasting gives errors, this inserts the copied formula using Desmos’s own API (the same method img2desmos uses) and sets both axes to 0 to 100 for you. Copy the formula, open desmos.com/calculator, then run the bookmarklet. Use the Standard (LaTeX) format with it.</small>
+  <small>If pasting gives errors, this inserts the copied formula using Desmos’s own API (the same method img2desmos uses) and sets both axes to 0 to 100 for you. Copy the formula, open desmos.com/calculator, run the bookmarklet, paste into the box it shows, and tap Load. Use the Standard (LaTeX) format with it.</small>
   <div class="row">
     <a id="bm" style="padding:10px 18px;border-radius:8px;background:var(--ac);color:var(--acfg);font-weight:600;text-decoration:none">Desmos Loader</a>
     <button id="bmcopy" class="sec">Copy bookmarklet code</button>
@@ -348,7 +348,7 @@ $('midi').onclick = async () => {
     msg.textContent = 'Saved. Unzip it in the Files app to get voices.mid.';
   } catch (e) { msg.textContent = e && e.code === 'declined' ? '' : 'Could not save: ' + (e && e.message || e); }
 };
-const BM = `javascript:(async()=>{try{const t=(await navigator.clipboard.readText()).trim();Calc.setExpression({id:'song',latex:t,color:'#2d70b3'});Calc.setViewport([0,100,0,100]);Calc.updateSettings({showGrid:false})}catch(e){alert('Copy the formula on the converter first, then run this on desmos.com/calculator. '+e.message)}})()`;
+const BM = `javascript:(()=>{const m=(t,s,p)=>{const e=document.createElement(t);e.style.cssText=s;(p||document.body).appendChild(e);return e};const o=m('div','position:fixed;left:0;top:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center');const b=m('div','background:#fff;color:#000;padding:16px;border-radius:12px;width:90%;max-width:520px;font:16px sans-serif',o);m('b','',b).textContent='Paste the formula below, then tap Load';const t=m('textarea','display:block;width:100%;height:140px;margin:10px 0;font:14px monospace',b);const l=m('button','padding:8px 16px;margin-right:8px',b);l.textContent='Load';const c=m('button','padding:8px 16px',b);c.textContent='Cancel';t.focus();c.onclick=()=>o.remove();l.onclick=()=>{try{Calc.setExpression({id:'song',latex:t.value.trim(),color:Calc.colors.BLUE});Calc.setViewport([0,100,0,100]);Calc.updateSettings({showGrid:false});o.remove()}catch(e){alert(e.message)}}})()`;
 $('bm').href = BM;
 $('bmcopy').onclick = async () => {
   try { await navigator.clipboard.writeText(BM); $('bmcopy').textContent = 'Copied!'; }
